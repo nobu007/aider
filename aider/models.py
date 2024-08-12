@@ -11,8 +11,6 @@ from typing import Optional
 
 import json5
 import yaml
-from PIL import Image
-
 from aider import urls
 from aider.dump import dump  # noqa: F401
 from aider.llm import litellm
@@ -60,6 +58,17 @@ claude-3-5-sonnet-20241022
 """
 
 ANTHROPIC_MODELS = [ln.strip() for ln in ANTHROPIC_MODELS.splitlines() if ln.strip()]
+
+
+GEMINI_MODELS = """
+gemini/gemini-pro
+gemini/gemini-1.5-pro-latest
+gemini/gemini-1.5-pro
+gemini/gemini-1.5-flash-latest
+gemini/gemini-1.5-flash
+"""
+
+GEMINI_MODELS = [ln.strip() for ln in GEMINI_MODELS.splitlines() if ln.strip()]
 
 
 @dataclass
@@ -466,15 +475,16 @@ MODEL_SETTINGS = [
         use_repo_map=True,
     ),
     ModelSettings(
-        "gemini/gemini-1.5-pro-exp-0827",
+        "gemini/gemini-1.5-flash",
         "diff-fenced",
         use_repo_map=True,
+        send_undo_reply=True,
     ),
     ModelSettings(
-        "gemini/gemini-1.5-flash-exp-0827",
-        "whole",
-        use_repo_map=False,
-        send_undo_reply=False,
+        "gemini/gemini-1.5-flash-latest",
+        "diff-fenced",
+        use_repo_map=True,
+        send_undo_reply=True,
     ),
     ModelSettings(
         "deepseek/deepseek-chat",
@@ -900,6 +910,8 @@ class Model(ModelSettings):
             var = "OPENAI_API_KEY"
         elif model in ANTHROPIC_MODELS or model.startswith("anthropic/"):
             var = "ANTHROPIC_API_KEY"
+        elif model in GEMINI_MODELS or model.startswith("gemini/"):
+            var = "GEMINI_API_KEY"
         else:
             return
 
@@ -943,9 +955,7 @@ def register_models(model_settings_fnames):
 
             for model_settings_dict in model_settings_list:
                 model_settings = ModelSettings(**model_settings_dict)
-                existing_model_settings = next(
-                    (ms for ms in MODEL_SETTINGS if ms.name == model_settings.name), None
-                )
+                existing_model_settings = next((ms for ms in MODEL_SETTINGS if ms.name == model_settings.name), None)
 
                 if existing_model_settings:
                     MODEL_SETTINGS.remove(existing_model_settings)
