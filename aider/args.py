@@ -5,13 +5,8 @@ import os
 import sys
 
 import configargparse
-
 from aider import __version__
-from aider.args_formatter import (
-    DotEnvFormatter,
-    MarkdownHelpFormatter,
-    YamlHelpFormatter,
-)
+from aider.args_formatter import DotEnvFormatter, MarkdownHelpFormatter, YamlHelpFormatter
 
 from .dump import dump  # noqa: F401
 
@@ -28,9 +23,7 @@ def get_parser(default_config_files, git_root):
         auto_env_var_prefix="AIDER_",
     )
     group = parser.add_argument_group("Main")
-    group.add_argument(
-        "files", metavar="FILE", nargs="*", help="files to edit with an LLM (optional)"
-    )
+    group.add_argument("files", metavar="FILE", nargs="*", help="files to edit with an LLM (optional)")
     group.add_argument(
         "--openai-api-key",
         metavar="OPENAI_API_KEY",
@@ -42,6 +35,12 @@ def get_parser(default_config_files, git_root):
         metavar="ANTHROPIC_API_KEY",
         env_var="ANTHROPIC_API_KEY",
         help="Specify the Anthropic API key",
+    )
+    group.add_argument(
+        "--gemini-api-key",
+        metavar="GEMINI_API_KEY",
+        env_var="GEMINI_API_KEY",
+        help="Specify the Gemini API key",
     )
     group.add_argument(
         "--model",
@@ -108,6 +107,29 @@ def get_parser(default_config_files, git_root):
         dest="model",
         const=gpt_3_model_name,
         help=f"Use {gpt_3_model_name} model for the main chat",
+    )
+    gemini_pro_model = "gemini/gemini-1.5-pro"
+    group.add_argument(
+        "--gemini-pro",
+        action="store_const",
+        dest="model",
+        const=gemini_pro_model,
+        help=f"Use {gemini_pro_model} model for the main chat",
+    )
+    gemini_flash_model = "gemini/gemini-1.5-flash"
+    group.add_argument(
+        "--gemini-flash",
+        action="store_const",
+        dest="model",
+        const=gemini_flash_model,
+        help=f"Use {gemini_flash_model} model for the main chat",
+    )
+    group.add_argument(
+        "--gemini",
+        action="store_const",
+        dest="model",
+        const=gemini_pro_model,
+        help=f"Use {gemini_flash_model} model for the main chat",
     )
 
     ##########
@@ -213,9 +235,7 @@ def get_parser(default_config_files, git_root):
 
     ##########
     group = parser.add_argument_group("History Files")
-    default_input_history_file = (
-        os.path.join(git_root, ".aider.input.history") if git_root else ".aider.input.history"
-    )
+    default_input_history_file = os.path.join(git_root, ".aider.input.history") if git_root else ".aider.input.history"
     default_chat_history_file = (
         os.path.join(git_root, ".aider.chat.history.md") if git_root else ".aider.chat.history.md"
     )
@@ -319,9 +339,7 @@ def get_parser(default_config_files, git_root):
         default=True,
         help="Enable/disable adding .aider* to .gitignore (default: True)",
     )
-    default_aiderignore_file = (
-        os.path.join(git_root, ".aiderignore") if git_root else ".aiderignore"
-    )
+    default_aiderignore_file = os.path.join(git_root, ".aiderignore") if git_root else ".aiderignore"
     group.add_argument(
         "--aiderignore",
         metavar="AIDERIGNORE",
@@ -512,17 +530,14 @@ def get_parser(default_config_files, git_root):
         "--msg",
         "-m",
         metavar="COMMAND",
-        help=(
-            "Specify a single message to send the LLM, process reply then exit (disables chat mode)"
-        ),
+        help=("Specify a single message to send the LLM, process reply then exit (disables chat mode)"),
     )
     group.add_argument(
         "--message-file",
         "-f",
         metavar="MESSAGE_FILE",
         help=(
-            "Specify a file containing the message to send the LLM, process reply, then exit"
-            " (disables chat mode)"
+            "Specify a file containing the message to send the LLM, process reply, then exit" " (disables chat mode)"
         ),
     )
     group.add_argument(
@@ -535,10 +550,7 @@ def get_parser(default_config_files, git_root):
         "--config",
         is_config_file=True,
         metavar="CONFIG_FILE",
-        help=(
-            "Specify the config file (default: search for .aider.conf.yml in git root, cwd"
-            " or home directory)"
-        ),
+        help=("Specify the config file (default: search for .aider.conf.yml in git root, cwd" " or home directory)"),
     )
     group.add_argument(
         "--gui",

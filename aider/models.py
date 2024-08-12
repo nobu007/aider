@@ -9,11 +9,10 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from PIL import Image
-
 from aider import urls
 from aider.dump import dump  # noqa: F401
 from aider.llm import AIDER_APP_NAME, AIDER_SITE_URL, litellm
+from PIL import Image
 
 DEFAULT_MODEL_NAME = "gpt-4o"
 
@@ -56,6 +55,17 @@ claude-3-5-sonnet-20240620
 """
 
 ANTHROPIC_MODELS = [ln.strip() for ln in ANTHROPIC_MODELS.splitlines() if ln.strip()]
+
+
+GEMINI_MODELS = """
+gemini/gemini-pro
+gemini/gemini-1.5-pro-latest
+gemini/gemini-1.5-pro
+gemini/gemini-1.5-flash-latest
+gemini/gemini-1.5-flash
+"""
+
+GEMINI_MODELS = [ln.strip() for ln in GEMINI_MODELS.splitlines() if ln.strip()]
 
 
 @dataclass
@@ -357,13 +367,25 @@ MODEL_SETTINGS = [
     ),
     # Gemini
     ModelSettings(
-        "gemini/gemini-1.5-pro",
+        "gemini/gemini-pro",
         "diff-fenced",
         use_repo_map=True,
         send_undo_reply=True,
     ),
     ModelSettings(
         "gemini/gemini-1.5-pro-latest",
+        "diff-fenced",
+        use_repo_map=True,
+        send_undo_reply=True,
+    ),
+    ModelSettings(
+        "gemini/gemini-1.5-flash",
+        "diff-fenced",
+        use_repo_map=True,
+        send_undo_reply=True,
+    ),
+    ModelSettings(
+        "gemini/gemini-1.5-flash-latest",
         "diff-fenced",
         use_repo_map=True,
         send_undo_reply=True,
@@ -589,6 +611,8 @@ class Model:
             var = "OPENAI_API_KEY"
         elif model in ANTHROPIC_MODELS or model.startswith("anthropic/"):
             var = "ANTHROPIC_API_KEY"
+        elif model in GEMINI_MODELS or model.startswith("gemini/"):
+            var = "GEMINI_API_KEY"
         else:
             return
 
@@ -632,9 +656,7 @@ def register_models(model_settings_fnames):
 
             for model_settings_dict in model_settings_list:
                 model_settings = ModelSettings(**model_settings_dict)
-                existing_model_settings = next(
-                    (ms for ms in MODEL_SETTINGS if ms.name == model_settings.name), None
-                )
+                existing_model_settings = next((ms for ms in MODEL_SETTINGS if ms.name == model_settings.name), None)
 
                 if existing_model_settings:
                     MODEL_SETTINGS.remove(existing_model_settings)
@@ -694,9 +716,7 @@ def sanity_check_model(io, model):
 
     if not model.info:
         show = True
-        io.tool_output(
-            f"Model {model}: Unknown context window size and costs, using sane defaults."
-        )
+        io.tool_output(f"Model {model}: Unknown context window size and costs, using sane defaults.")
 
         possible_matches = fuzzy_match_models(model.name)
         if possible_matches:
