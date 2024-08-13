@@ -2,16 +2,11 @@ import hashlib
 import json
 
 import backoff
-
 from aider.dump import dump  # noqa: F401
 from aider.llm import litellm
 
-# from diskcache import Cache
-
-
 CACHE_PATH = "~/.aider.send.cache.v1"
 CACHE = None
-# CACHE = Cache(CACHE_PATH)
 
 RETRY_TIMEOUT = 60
 
@@ -83,8 +78,6 @@ def send_completion(
         kwargs.update(extra_params)
 
     key = json.dumps(kwargs, sort_keys=True).encode()
-
-    # Generate SHA1 hash of kwargs and append it to chat_completion_call_hashes
     hash_object = hashlib.sha1(key)
 
     if not stream and CACHE is not None and key in CACHE:
@@ -99,17 +92,28 @@ def send_completion(
 
 
 @lazy_litellm_retry_decorator
-def simple_send_with_retries(model_name, messages, extra_params=None):
-    try:
-        kwargs = {
-            "model_name": model_name,
-            "messages": messages,
-            "functions": None,
-            "stream": False,
-            "extra_params": extra_params,
-        }
+def simple_send_with_retries(model_name, messages, extra_params=None, fallback_models=["claude-3-5-sonnet-20240620"]):
+    if fallback_models is None:
+        fallback_models = []
 
-        _hash, response = send_completion(**kwargs)
-        return response.choices[0].message.content
-    except (AttributeError, litellm.exceptions.BadRequestError):
-        return
+    models_to_try = [model_name] + fallback_models
+
+    for model in models_to_try:
+        try:
+            kwargs = {
+                "model_name": model_name,
+                "messages": messages,
+                "functions": None,
+                "stream": False,
+                "extra_params": extra_params,
+            }
+            _hash, response = send_completion(**kwargs)
+            return response.choices[0].message.content
+        except (AttributeError, litellm.exceptions.BadRequestError) as e:
+            print(f"Error with model {model}: {str(e)}")
+            if model == models_to_try[-1]:
+                print("All models failed. Returning None.")
+                return None
+            print(f"Retrying with next model: {models_to_try[models_to_try.index(model) + 1]}")
+
+    return None
