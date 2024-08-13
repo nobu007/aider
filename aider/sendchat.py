@@ -2,16 +2,11 @@ import hashlib
 import json
 
 import backoff
-
 from aider.dump import dump  # noqa: F401
 from aider.llm import litellm
 
-# from diskcache import Cache
-
-
 CACHE_PATH = "~/.aider.send.cache.v1"
 CACHE = None
-# CACHE = Cache(CACHE_PATH)
 
 
 def retry_exceptions():
@@ -46,9 +41,7 @@ def lazy_litellm_retry_decorator(func):
     return wrapper
 
 
-def send_completion(
-    model_name, messages, functions, stream, temperature=0, extra_headers=None, max_tokens=None
-):
+def send_completion(model_name, messages, functions, stream, temperature=0, extra_headers=None, max_tokens=None):
     from aider.llm import litellm
 
     kwargs = dict(
@@ -65,14 +58,10 @@ def send_completion(
         kwargs["max_tokens"] = max_tokens
 
     key = json.dumps(kwargs, sort_keys=True).encode()
-
-    # Generate SHA1 hash of kwargs and append it to chat_completion_call_hashes
     hash_object = hashlib.sha1(key)
 
     if not stream and CACHE is not None and key in CACHE:
         return hash_object, CACHE[key]
-
-    # del kwargs['stream']
 
     res = litellm.completion(**kwargs)
 
@@ -83,14 +72,26 @@ def send_completion(
 
 
 @lazy_litellm_retry_decorator
-def simple_send_with_retries(model_name, messages):
-    try:
-        _hash, response = send_completion(
-            model_name=model_name,
-            messages=messages,
-            functions=None,
-            stream=False,
-        )
-        return response.choices[0].message.content
-    except (AttributeError, litellm.exceptions.BadRequestError):
-        return
+def simple_send_with_retries(model_name, messages, fallback_models=["claude-3-5-sonnet-20240620"]):
+    if fallback_models is None:
+        fallback_models = []
+
+    models_to_try = [model_name] + fallback_models
+
+    for model in models_to_try:
+        try:
+            _hash, response = send_completion(
+                model_name=model,
+                messages=messages,
+                functions=None,
+                stream=False,
+            )
+            return response.choices[0].message.content
+        except (AttributeError, litellm.exceptions.BadRequestError) as e:
+            print(f"Error with model {model}: {str(e)}")
+            if model == models_to_try[-1]:
+                print("All models failed. Returning None.")
+                return None
+            print(f"Retrying with next model: {models_to_try[models_to_try.index(model) + 1]}")
+
+    return None
